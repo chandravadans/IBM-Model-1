@@ -36,9 +36,10 @@ public class EMAlgorithm {
 
 	}
 
-	public static String EnglishFile="train_eng_500.txt";
-	public static String GermanFile="train_ger_500.txt";
+	public static String EnglishFile="train_eng_1000.txt";
+	public static String GermanFile="train_ger_1000.txt";
 	public static int NUM_ITERATIONS=100;
+	public static double DELTA=5.0;
 
 
 	public static HashSet<String> EnglishWords=new HashSet<String>();
@@ -47,27 +48,29 @@ public class EMAlgorithm {
 	
 
 
-	public static void main(String args[]) throws IOException{
+	public static void train(String args[]) throws IOException{
 
+		if(args.length<2){
+			System.out.println("Missing parameters. Please provide English and German Training file names");
+			return;
+		}
+		EnglishFile=args[0];
+		GermanFile=args[1];
 		//Runs EM Algorithm on the training files, and produces the 't(e|f)' table
 		initialiseWords();
 
 
 		//Initialise t(e|f) uniformly
 		initialiseTMap();
-		/*Double initialValue=(double) (1.0/GermanWords.size());
-		for (String e:EnglishWords){
-			for(String f:GermanWords){
-				t.put(new WordPair(e, f), initialValue);
-			}
-		}*/
-
-		//While not converges do
+		
+		
 		double previousPerplexity=0;
 		double perplexity=0;
 
-
-		outer:for(int i=0;i<NUM_ITERATIONS;i++){
+		//While not converges do
+		for(int i=0;i<NUM_ITERATIONS;i++){
+		
+			long start=System.currentTimeMillis();
 
 			//System.out.println("Previous perplexity was "+previousPerplexity);
 			//System.out.println("Diff is "+(previousPerplexity-perplexity));
@@ -75,9 +78,9 @@ public class EMAlgorithm {
 
 			if(i>1){
 				System.out.println("Perplexity decreased by "+Math.abs(diff));
-				if(!Double.isInfinite(diff) && Math.abs(diff)-5<0.1){
+				if(!Double.isInfinite(diff) && Math.abs(diff)-DELTA<0.1){
 					System.out.println("Algorithm converged");
-					break outer;
+					return;
 				}
 			}
 			BufferedReader englishFile=new BufferedReader(new FileReader(new File(EnglishFile)));
@@ -87,18 +90,14 @@ public class EMAlgorithm {
 			double perplexitySum=0;	
 			System.out.println("Iteration : "+i);
 
-			HashMap<WordPair,Double> count=new HashMap<WordPair,Double>();
-			initCountMap(count);
+
 			HashMap<String,Double> total=new HashMap<String,Double>();
 			HashMap<String,Double> s_total=new HashMap<String,Double>();
 
 			
 			// count(e|f) = 0 for all e,f
-/*			for (String e:EnglishWords){
-				for(String f:GermanWords){
-					count.put(new WordPair(e, f), (double) 0);
-				}
-			}*/
+			HashMap<WordPair,Double> count=new HashMap<WordPair,Double>();
+			initCountMap(count);
 
 			// total(f) = 0 for all f
 			for(String f:GermanWords){
@@ -177,19 +176,23 @@ public class EMAlgorithm {
 				String englishWords[]=englishLine.split(" ");
 				String germanWords[]=germanLine.split(" ");
 
+				
+				/**EPSILON ADJUSTMENTS*/
+				/*int pow=((int)Math.log10(probability));
+				pow++;
 				double power=(Math.pow(germanWords.length, englishWords.length));
-
+				probability*=Math.pow(10, pow);
+				//System.out.println("eps="+Math.pow(10, mul-1));
+				//probability*=Math.pow(10, mul-1);*/
+				
 				double probability=(double)1.0;
-				//System.out.println("Init with "+probability);
-
+				
 				for(String eng:englishWords){
 					double sum=0;
 					for(String ger:germanWords){
 						if(t.get(new WordPair(eng, ger))!=null){
 							sum+=t.get(new WordPair(eng, ger));
-							//System.out.print(sum+"\t");
-
-						}else
+				 		 }else
 							System.out.println("oops!");
 
 					}
@@ -197,35 +200,31 @@ public class EMAlgorithm {
 				}
 				double mul=Math.log10(probability);
 				mul=Math.abs(mul);
-				//System.out.println("eps="+Math.pow(10, mul-1));
-				//probability*=Math.pow(10, mul-1);
+				
 			
 				/***** Print out probability values **********/
 				//System.out.println("p( "+englishLine+" | "+germanLine+"="+probability);
-				int pow=((int)Math.log10(probability));
-				pow++;
-				//probability*=Math.pow(10, pow);
-				
 				
 				perplexitySum+=Math.log10(probability)/Math.log10(2);
-
 				englishLine=englishFile.readLine();
 				germanLine=germanFile.readLine();
 
 			}
+			
 			perplexitySum=0-perplexitySum;
-			
-			
 			perplexity=perplexitySum;
 		
 			//perplexity=Math.pow(2, perplexitySum);
+			
 			System.out.println("log(Perplexity)= "+perplexity);
+			long end=System.currentTimeMillis();
+			System.out.println("Time taken : "+(end-start) +" ms");
 			englishFile.close();
 			germanFile.close();
 		}
 	}
 
-	//Reads both files and fills up the words into the two Sets
+	//Reads both files and fills up the words into the vocabulary sets
 	public static void initialiseWords() throws IOException{
 
 		BufferedReader englishFile=new BufferedReader(new FileReader(new File(EnglishFile)));
@@ -259,6 +258,7 @@ public class EMAlgorithm {
 		germanFile.close();
 	}
 	
+	//Initialises t(e|f) map
 	public static void initialiseTMap() throws IOException{
 		
 		BufferedReader englishFile=new BufferedReader(new FileReader(new File(EnglishFile)));
@@ -291,6 +291,8 @@ public class EMAlgorithm {
 		germanFile.close();
 
 	}
+	
+	//Initialises count map
 	public static void initCountMap(HashMap<WordPair,Double> count) throws IOException{
 		
 		BufferedReader englishFile=new BufferedReader(new FileReader(new File(EnglishFile)));
@@ -299,12 +301,12 @@ public class EMAlgorithm {
 		//Read a line, remove all junk and make it lower case
 		String engLine=englishFile.readLine();
 		String germanLine=germanFile.readLine();
-		Double initialValue=(double) (1.0/GermanWords.size());
-		//System.out.println(engLine);
+		
 		while(engLine!=null && germanLine!=null){
 			engLine=engLine.replaceAll("\\p{Punct}|\\d","").toLowerCase();
 			germanLine=germanLine.replaceAll("\\p{Punct}|\\d","").toLowerCase();
-			//Put all words in the line into the set
+			
+			
 			String engWords[]=engLine.split(" ");
 			String gerWords[]=germanLine.split(" ");
 			int numGerman=gerWords.length;
@@ -318,13 +320,8 @@ public class EMAlgorithm {
 			engLine=englishFile.readLine();
 			germanLine=germanFile.readLine();
 		}
-		//System.out.println("Initialised count with "+count.size()+" pairs");
+		
 		englishFile.close();
 		germanFile.close();
-
-		
-		
 	}
-	
-
 }
