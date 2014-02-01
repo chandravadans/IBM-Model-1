@@ -77,7 +77,7 @@ public class EMAlgorithm {
 			Double diff=Math.abs(previousPerplexity)-Math.abs(perplexity);
 
 			if(i>1){
-				System.out.println("Perplexity decreased by "+Math.abs(diff));
+				//System.out.println("Perplexity decreased by "+Math.abs(diff));
 				if(!Double.isInfinite(diff) && Math.abs(diff)-DELTA<0.1){
 					System.out.println("Algorithm converged");
 					return;
@@ -218,7 +218,7 @@ public class EMAlgorithm {
 			
 			System.out.println("log(Perplexity)= "+perplexity);
 			long end=System.currentTimeMillis();
-			System.out.println("Time taken : "+(end-start) +" ms");
+			//System.out.println("Time taken : "+(end-start) +" ms");
 			englishFile.close();
 			germanFile.close();
 		}
